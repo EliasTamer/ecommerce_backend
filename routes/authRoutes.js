@@ -1,8 +1,8 @@
-const express = require("express")
-const authController = require("../controllers/authController")
-const verifyToken = require("../utils/verifyToken")
+const express = require("express");
+const authController = require("../controllers/authController");
+const verifyToken = require("../utils/verifyToken");
 
-const router = express.Router()
+const router = express.Router();
 
 
 router.post("/register", authController.register);
