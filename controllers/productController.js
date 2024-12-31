@@ -8,10 +8,7 @@ exports.createProduct = async (req, res, next) => {
     try {
         const { name, description, price, stock } = req.body;
 
-        // First verify the connection string is available
-        console.log('Connection string exists:', !!process.env.AZURE_STORAGE_CONNECTION_STRING);
-
-        const testFile = {
+        const testImage = {
             fieldname: 'image',
             originalname: 'ps5.jpg',
             encoding: '7bit',
@@ -20,12 +17,25 @@ exports.createProduct = async (req, res, next) => {
             size: fs.statSync('ps5.jpg').size
         };
 
-        const imageUrl = await saveToStorageAccount(testFile, 'products');
-        console.log('Upload successful:', imageUrl);
+        const imageUrl = await saveToStorageAccount(testImage, 'products');
 
-        res.status(200).json({ success: true, imageUrl });
+        const createProductQuery = "INSERT INTO PRODUCT (name, description, price, stock, image) VALUES(?, ?, ?, ?, ?)";
+
+        const result = await new Promise((resolve, reject) => {
+            db.query(createProductQuery, [name, description, price, stock, imageUrl], (error, result) => {
+                if (error) reject(error);
+                else resolve(result);
+            })
+        });
+
+        return res.status(201).json({
+            data: {
+                productId: result.insertId
+            },
+            Message: "Product has been added successfuly!",
+            Success: true
+        })
     } catch (error) {
-        console.error('Controller error:', error);
         next(error);
     }
 }

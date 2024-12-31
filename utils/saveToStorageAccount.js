@@ -10,7 +10,7 @@ module.exports = async function saveToStorageAccount(file, containerName) {
         // get container client (creates container if it doesn't exist)
         const containerClient = blobServiceClient.getContainerClient(containerName);
         await containerClient.createIfNotExists({
-            access: 'container' // Changed from 'blob' to 'container'
+            access: 'container'
         });
 
         // generate unique filename
@@ -19,7 +19,7 @@ module.exports = async function saveToStorageAccount(file, containerName) {
 
         // upload file
         await blobClient.uploadData(file.buffer, {
-            blobHTTPHeaders: { 
+            blobHTTPHeaders: {
                 blobContentType: file.mimetype
             }
         });
