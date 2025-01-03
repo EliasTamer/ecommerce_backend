@@ -8,13 +8,14 @@ exports.createProduct = async (req, res, next) => {
     try {
         const { name, description, price, stock } = req.body;
 
+        const imagePath = path.join('images', 'ps5.jpg');
         const testImage = {
             fieldname: 'image',
             originalname: 'ps5.jpg',
             encoding: '7bit',
             mimetype: 'image/jpeg',
-            buffer: fs.readFileSync('ps5.jpg'),
-            size: fs.statSync('ps5.jpg').size
+            buffer: fs.readFileSync(imagePath),
+            size: fs.statSync(imagePath).size
         };
 
         const imageUrl = await saveToStorageAccount(testImage, 'products');
