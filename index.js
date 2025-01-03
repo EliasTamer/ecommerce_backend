@@ -3,6 +3,7 @@ const express = require("express")
 const app = express();
 const authRoutes = require("./routes/authRoutes");
 const productRoutes = require("./routes/productRoutes");
+const userRoutes = require("./routes/userRoutes");
 
 const port = process.env.PORT || 3001
 
@@ -24,6 +25,7 @@ app.use((req, res, next) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/product", productRoutes);
+app.use("/api/users", userRoutes);
 
 // to handle the thrown errors in my controllers
 app.use((error, req, res, next) => {
