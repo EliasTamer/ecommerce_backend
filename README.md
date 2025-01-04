@@ -94,6 +94,7 @@ The application uses a relational database model with MySQL. Below is the Entity
 
 ### Users
 - `GET /api/users/profile` - Get user profile
+- `POST /api/users/profile` - Edit user profile
 
 ### Products
 - `GET /api/products` - List all products
