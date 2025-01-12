@@ -13,4 +13,4 @@ router.post("/changePassword", verifyToken, authController.changePassword);
 router.post("/deleteUserAccount", verifyToken, authController.deleteUserAccount);
 
 
-module.exports = router
+module.exports = router;
