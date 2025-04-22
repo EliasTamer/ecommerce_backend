@@ -1,13 +1,13 @@
 require("dotenv").config();
-const express = require("express")
+const express = require("express");
 const app = express();
 const authRoutes = require("./routes/authRoutes");
 const productRoutes = require("./routes/productRoutes");
 const userRoutes = require("./routes/userRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
-const orderRoutes = require("./routes/orderRoutes")
+const orderRoutes = require("./routes/orderRoutes");
 
-const port = process.env.PORT || 3001
+const port = process.env.PORT || 3001;
 
 // formatting body requests to json
 app.use(express.json());
@@ -21,7 +21,6 @@ app.use((req, res, next) => {
     if (req.method === 'OPTIONS') {
         return res.sendStatus(200);
     }
-
     next();
 })
 
@@ -30,6 +29,7 @@ app.use("/api/product", productRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/category", categoryRoutes);
 app.use("/api/order", orderRoutes);
+
 
 // to handle the thrown errors in my controllers
 app.use((error, req, res, next) => {

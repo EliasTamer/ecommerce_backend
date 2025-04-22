@@ -1,4 +1,3 @@
-
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("../utils/databaseConnection");
@@ -94,17 +93,16 @@ exports.register = async (req, res, next) => {
 
 
 exports.login = async (req, res, next) => {
-    const { email, password } = req.body
-    const fetchUserQuery = "SELECT * FROM USER WHERE email = ?"
+    const { email, password } = req.body;
+    const fetchUserQuery = "SELECT * FROM USER WHERE email = ?";
 
     try {
-
         const result = await new Promise((resolve, reject) => {
             db.query(fetchUserQuery, [email], (error, result) => {
                 if (error) reject(error);
                 else resolve(result);
             });
-        })
+        });
 
         if (result.length === 0) {
             const error = new Error("Email not found!");
@@ -121,24 +119,48 @@ exports.login = async (req, res, next) => {
             throw error;
         }
 
-        const expiryDate = new Date();
-        expiryDate.setHours(expiryDate.getHours() + 6);
-
-        const token = jwt.sign(
+        // generate access token (short-lived)
+        const accessToken = jwt.sign(
             {
                 userId: user.id,
                 email: user.email,
-                exp: Math.floor(expiryDate.getTime() / 1000)
+                exp: Math.floor(Date.now() / 1000) + (60 * 15) // 15 minutes
             },
             process.env.JWT_SECRET
         );
 
-        delete user.password;
+        // generate refresh token (long-lived)
+        const refreshToken = jwt.sign(
+            {
+                userId: user.id,
+                email: user.email,
+                exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) // 7 days
+            },
+            process.env.REFRESH_TOKEN_SECRET
+        );
 
-        return res.status(201).json({
+        // store refresh token in db
+        const refreshTokenExpiry = new Date();
+        refreshTokenExpiry.setDate(refreshTokenExpiry.getDate() + 7);
+
+        await new Promise((resolve, reject) => {
+            db.query('UPDATE User SET refresh_token = ?, refresh_token_expiry = ? WHERE id = ?',
+                [refreshToken, refreshTokenExpiry, user.id],
+                (error, result) => {
+                    if (error) reject(error);
+                    else resolve(result);
+                });
+        });
+
+        delete user.password;
+        delete user.refresh_token;
+        delete user.refresh_token_expiry;
+
+        return res.status(200).json({
             Success: true,
             data: user,
-            token
+            accessToken,
+            refreshToken
         });
     } catch (error) {
         next(error);
@@ -199,7 +221,6 @@ exports.generateOtp = async (req, res, next) => {
 
 
 }
-
 
 exports.validateOtp = async (req, res, next) => {
     const userId = req.user.userId;
@@ -311,4 +332,54 @@ exports.deleteUserAccount = async (req, res, next) => {
     } catch (error) {
         next(error);
     }
-} 
+}
+
+exports.refreshToken = async (req, res, next) => {
+    const { refreshToken } = req.body;
+
+    try {
+        if (!refreshToken) {
+            const error = new Error("Refresh token is required");
+            error.statusCode = 400;
+            throw error;
+        }
+
+        // verify refresh token
+        const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+
+        // check if refresh token exists in database
+        const result = await new Promise((resolve, reject) => {
+            db.query('SELECT * FROM User WHERE id = ? AND refresh_token = ?',
+                [decoded.userId, refreshToken],
+                (error, result) => {
+                    if (error) reject(error);
+                    else resolve(result);
+                });
+        });
+
+        if (result.length === 0) {
+            const error = new Error("Invalid refresh token");
+            error.statusCode = 401;
+            throw error;
+        }
+
+        const user = result[0];
+
+        // generate new access token
+        const newAccessToken = jwt.sign(
+            {
+                userId: user.id,
+                email: user.email,
+                exp: Math.floor(Date.now() / 1000) + (60 * 15) // 15 minutes
+            },
+            process.env.JWT_SECRET
+        );
+
+        return res.status(200).json({
+            Success: true,
+            accessToken: newAccessToken
+        });
+    } catch (error) {
+        next(error);
+    }
+}

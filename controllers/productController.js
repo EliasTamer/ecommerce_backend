@@ -1,6 +1,3 @@
-const fs = require('fs');
-const path = require('path');
-
 const db = require("../utils/databaseConnection");
 const saveToStorageAccount = require("../utils/saveToStorageAccount");
 
@@ -8,17 +5,14 @@ exports.createProduct = async (req, res, next) => {
     try {
         const { name, description, price, stock, categoryId } = req.body;
 
-        const imagePath = path.join('images', 'ps5.jpg');
-        const testImage = {
-            fieldname: 'image',
-            originalname: 'ps5.jpg',
-            encoding: '7bit',
-            mimetype: 'image/jpeg',
-            buffer: fs.readFileSync(imagePath),
-            size: fs.statSync(imagePath).size
-        };
+        if (!req.file) {
+            const error = new Error("No image file provided");
+            error.statusCode = 400;
+            throw error;
+        }
 
-        const imageUrl = await saveToStorageAccount(testImage, 'products');
+        // upload to Azure Storage and get URL
+        const imageUrl = await saveToStorageAccount(req.file, 'products');
 
         const createProductQuery = "INSERT INTO PRODUCT (name, description, price, stock, image, category_id) VALUES(?, ?, ?, ?, ?, ?)";
 
@@ -32,7 +26,8 @@ exports.createProduct = async (req, res, next) => {
         return res.status(201).json({
             data: {
                 id: result.insertId,
-                ...req.body
+                ...req.body,
+                image: imageUrl
             },
             Message: "Product has been added successfuly!",
             Success: true
