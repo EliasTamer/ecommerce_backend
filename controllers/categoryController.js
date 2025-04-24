@@ -1,23 +1,20 @@
 const db = require("../utils/databaseConnection");
-
+const saveToStorageAccount = require("../utils/saveToStorageAccount");
 
 exports.createCategory = async (req, res, next) => {
-    const { name, description, image } = req.body;
+    const { name, description } = req.body;
 
     try {
-        if (!name || !description || !image) {
+        if (!name || !description || !req.file) {
             const error = new Error("name, description and image fields are required!");
             error.statusCode = 404;
             throw error;
         }
 
-        const createCategoryQuery = `INSERT INTO CATEGORY(name, description, image) VALUES(?, ?, ?)`;
-        const result = await new Promise((resolve, reject) => {
-            db.query(createCategoryQuery, [name, description, image], (error, results) => {
-                if (error) reject(error);
-                resolve(results)
-            })
-        })
+        const imageUrl = await saveToStorageAccount(req.file, 'categories');
+
+        const createCategoryQuery = `INSERT INTO category(name, description, image) VALUES(?, ?, ?)`;
+        const [result] = await db.query(createCategoryQuery, [name, description, imageUrl]);
 
         return res.status(201).json({
             Success: true,
@@ -28,16 +25,10 @@ exports.createCategory = async (req, res, next) => {
     }
 }
 
-
 exports.getCategories = async (req, res, next) => {
     try {
-        const getCategoriesQuery = `SELECT * FROM CATEGORY;`
-        const results = await new Promise((resolve, reject) => {
-            db.query(getCategoriesQuery, [], (error, results) => {
-                if (error) reject(error);
-                resolve(results);
-            })
-        })
+        const getCategoriesQuery = `SELECT * FROM category;`
+        const [results] = await db.query(getCategoriesQuery);
 
         return res.status(201).json({
             data: results,
@@ -48,17 +39,11 @@ exports.getCategories = async (req, res, next) => {
     }
 }
 
-
 exports.getCategoryDetails = async (req, res, next) => {
     try {
         const { id } = req.body;
-        const getCategoryDetailsQuery = `SELECT * FROM CATEGORY WHERE id=?`;
-        const results = await new Promise((resolve, reject) => {
-            db.query(getCategoryDetailsQuery, [id], (error, results) => {
-                if (error) reject(error);
-                resolve(results);
-            })
-        })
+        const getCategoryDetailsQuery = `SELECT * FROM category WHERE id=?`;
+        const [results] = await db.query(getCategoryDetailsQuery, [id]);
 
         return res.status(201).json({
             data: results[0] || {},
@@ -68,7 +53,6 @@ exports.getCategoryDetails = async (req, res, next) => {
         next(error);
     }
 }
-
 
 exports.updateCategoryDetails = async (req, res, next) => {
     try {
@@ -83,14 +67,8 @@ exports.updateCategoryDetails = async (req, res, next) => {
                 fieldsToUpdateArray.push(value)
             });
 
-            const updateCategoryDetailsQuery = `UPDATE CATEGORY SET ` + fieldsToUpdateQuery + " WHERE id = ?"
-
-            const result = await new Promise((resolve, reject) => {
-                db.query(updateCategoryDetailsQuery, [...fieldsToUpdateArray, updatedCategoryFields.id], (error, result) => {
-                    if (error) reject(error);
-                    else resolve(result);
-                });
-            })
+            const updateCategoryDetailsQuery = `UPDATE category SET ` + fieldsToUpdateQuery + " WHERE id = ?";
+            const [result] = await db.query(updateCategoryDetailsQuery, [...fieldsToUpdateArray, updatedCategoryFields.id]);
 
             return res.status(201).json({
                 data: result,
@@ -109,7 +87,6 @@ exports.updateCategoryDetails = async (req, res, next) => {
     }
 }
 
-
 exports.deleteCategory = async (req, res, next) => {
     try {
         const { id } = req.body;
@@ -120,13 +97,8 @@ exports.deleteCategory = async (req, res, next) => {
             throw error;
         }
 
-        const deleteCategoryQuery = `DELETE FROM CATEGORY WHERE id=?`;
-        await new Promise((resolve, reject) => {
-            db.query(deleteCategoryQuery, [id], (error, results) => {
-                if (error) reject(error);
-                resolve(results);
-            })
-        })
+        const deleteCategoryQuery = `DELETE FROM category WHERE id=?`;
+        await db.query(deleteCategoryQuery, [id]);
 
         return res.status(201).json({
             Message: "Category has been deleted!",

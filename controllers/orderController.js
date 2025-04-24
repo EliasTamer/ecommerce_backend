@@ -7,13 +7,8 @@ exports.placeOrder = async (req, res, next) => {
     try {
         // get all products in a single query
         const productIds = products.map(p => p.productId);
-        const findProductsQuery = `SELECT * FROM PRODUCT WHERE id IN (?)`;
-        const productsFound = await new Promise((resolve, reject) => {
-            db.query(findProductsQuery, [productIds], (error, results) => {
-                if (error) reject(error);
-                resolve(results);
-            });
-        });
+        const findProductsQuery = `SELECT * FROM product WHERE id IN (?)`;
+        const [productsFound] = await db.query(findProductsQuery, [productIds]);
 
         // Create a map for easier lookup and validation
         const productMap = new Map(productsFound.map(p => [p.id, p]));
@@ -35,42 +30,27 @@ exports.placeOrder = async (req, res, next) => {
 
         // update all product stocks in a single query using CASE
         const updateStockQuery = `
-            UPDATE PRODUCT 
-            SET stock = CASE id 
-                ${products.map(p => `WHEN ${p.productId} THEN stock - ${p.quantity}`).join(' ')}
-            END
-            WHERE id IN (?)`;
+           UPDATE product 
+           SET stock = CASE id 
+               ${products.map(p => `WHEN ${p.productId} THEN stock - ${p.quantity}`).join(' ')}
+           END
+           WHERE id IN (?)`;
 
-        await new Promise((resolve, reject) => {
-            db.query(updateStockQuery, [productIds], (error, results) => {
-                if (error) reject(error);
-                resolve(results);
-            });
-        });
+        await db.query(updateStockQuery, [productIds]);
 
         // Create order
         const totalAmount = products.reduce((acc, product) =>
             acc + (product.quantity * product.unit_price), 0);
 
-        const createOrderQuery = `INSERT INTO \`ORDER\`(user_id, total_amount) VALUES (?, ?)`;
-        const orderResult = await new Promise((resolve, reject) => {
-            db.query(createOrderQuery, [userId, totalAmount], (error, results) => {
-                if (error) reject(error);
-                resolve(results);
-            });
-        });
+        const createOrderQuery = `INSERT INTO \`order\`(user_id, total_amount) VALUES (?, ?)`;
+        const [orderResult] = await db.query(createOrderQuery, [userId, totalAmount]);
 
         // bulk insert all order items in a single query
         const order_id = orderResult.insertId;
-        const orderItemsQuery = `INSERT INTO ORDER_ITEM (order_id, product_id, quantity, unit_price) VALUES ?`;
+        const orderItemsQuery = `INSERT INTO order_item (order_id, product_id, quantity, unit_price) VALUES ?`;
         const orderItemValues = products.map(p => [order_id, p.productId, p.quantity, p.unit_price]);
 
-        await new Promise((resolve, reject) => {
-            db.query(orderItemsQuery, [orderItemValues], (error, results) => {
-                if (error) reject(error);
-                resolve(results);
-            });
-        });
+        await db.query(orderItemsQuery, [orderItemValues]);
 
         return res.status(201).json({
             message: "Order has been placed!",

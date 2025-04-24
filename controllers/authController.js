@@ -14,17 +14,8 @@ exports.register = async (req, res, next) => {
             throw error
         }
 
-        const checkExisting = () => {
-            return new Promise((resolve, reject) => {
-                const query = 'SELECT email, phoneNumber FROM User WHERE email = ? OR phoneNumber = ?';
-                db.query(query, [email, phoneNumber], (error, results) => {
-                    if (error) reject(error);
-                    resolve(results);
-                });
-            });
-        };
-
-        const existingUsers = await checkExisting();
+        const query = 'SELECT email, phoneNumber FROM user WHERE email = ? OR phoneNumber = ?';
+        const [existingUsers] = await db.query(query, [email, phoneNumber]);
 
         if (existingUsers.length > 0) {
             const existingUser = existingUsers[0];
@@ -42,75 +33,53 @@ exports.register = async (req, res, next) => {
 
         password = await bcrypt.hash(password, 12);
 
-        const userCreationQuery = `INSERT INTO User (firstName, lastName, email, password, phoneNumber, gender) VALUES(?, ?, ?, ?, ?, ?)`
-        const addressCreationQuery = "INSERT INTO Address (userId, street, city, state, postalCode, country) VALUES (?, ?, ?, ?, ?, ?)"
+        const userCreationQuery = `INSERT INTO user (firstName, lastName, email, password, phoneNumber, gender) VALUES(?, ?, ?, ?, ?, ?)`;
+        const [userResult] = await db.query(userCreationQuery, [firstName, lastName, email, password, phoneNumber, gender]);
+        const userId = userResult.insertId;
 
-        db.query(userCreationQuery, [firstName, lastName, email, password, phoneNumber, gender], (error, result) => {
-            if (error) {
-                const error = new Error(error.sqlMessage)
-                error.statusCode = 500
-                throw error;
-            }
+        const addressCreationQuery = "INSERT INTO address (userId, street, city, state, postalCode, country) VALUES (?, ?, ?, ?, ?, ?)";
+        const [addressResult] = await db.query(addressCreationQuery, [userId, street, city, state, postalCode, country]);
+        const addressId = addressResult.insertId;
 
-            const userId = result.insertId;
-
-            db.query(addressCreationQuery, [userId, street, city, state, postalCode, country], (error, result) => {
-                if (error) {
-                    const error = new Error(error.sqlMessage)
-                    error.statusCode = 500
-                    throw error;
+        return res.status(201).json({
+            data: {
+                id: userId,
+                firstName,
+                lastName,
+                email,
+                phoneNumber,
+                gender,
+                address: {
+                    id: addressId,
+                    street,
+                    city,
+                    state,
+                    postalCode,
+                    country
                 }
-
-                const addressId = result.insertId;
-
-                return res.status(201).json({
-                    data: {
-                        id: userId,
-                        firstName,
-                        lastName,
-                        email,
-                        phoneNumber,
-                        gender,
-                        address: {
-                            id: addressId,
-                            street,
-                            city,
-                            state,
-                            postalCode,
-                            country
-                        }
-                    },
-                    Message: "User has been created!",
-                    Success: true
-                })
-            })
-
-        })
+            },
+            Message: "User has been created!",
+            Success: true
+        });
     } catch (error) {
-        next(error)
+        next(error);
     }
 }
 
-
 exports.login = async (req, res, next) => {
     const { email, password } = req.body;
-    const fetchUserQuery = "SELECT * FROM USER WHERE email = ?";
+    const fetchUserQuery = "SELECT * FROM user WHERE email = ?";
 
     try {
-        const result = await new Promise((resolve, reject) => {
-            db.query(fetchUserQuery, [email], (error, result) => {
-                if (error) reject(error);
-                else resolve(result);
-            });
-        });
+        const [rows] = await db.query(fetchUserQuery, [email]);
 
-        if (result.length === 0) {
+        if (rows.length === 0) {
             const error = new Error("Email not found!");
             error.statusCode = 404;
             throw error;
         }
 
-        const user = result[0];
+        const user = rows[0];
         const match = await bcrypt.compare(password, user.password);
 
         if (!match) {
@@ -119,38 +88,31 @@ exports.login = async (req, res, next) => {
             throw error;
         }
 
-        // generate access token (short-lived)
         const accessToken = jwt.sign(
             {
                 userId: user.id,
                 email: user.email,
-                exp: Math.floor(Date.now() / 1000) + (60 * 15) // 15 minutes
+                exp: Math.floor(Date.now() / 1000) + (60 * 15)
             },
             process.env.JWT_SECRET
         );
 
-        // generate refresh token (long-lived)
         const refreshToken = jwt.sign(
             {
                 userId: user.id,
                 email: user.email,
-                exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) // 7 days
+                exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7)
             },
             process.env.REFRESH_TOKEN_SECRET
         );
 
-        // store refresh token in db
         const refreshTokenExpiry = new Date();
         refreshTokenExpiry.setDate(refreshTokenExpiry.getDate() + 7);
 
-        await new Promise((resolve, reject) => {
-            db.query('UPDATE User SET refresh_token = ?, refresh_token_expiry = ? WHERE id = ?',
-                [refreshToken, refreshTokenExpiry, user.id],
-                (error, result) => {
-                    if (error) reject(error);
-                    else resolve(result);
-                });
-        });
+        await db.query(
+            'UPDATE user SET refresh_token = ?, refresh_token_expiry = ? WHERE id = ?',
+            [refreshToken, refreshTokenExpiry, user.id]
+        );
 
         delete user.password;
         delete user.refresh_token;
@@ -167,7 +129,6 @@ exports.login = async (req, res, next) => {
     }
 }
 
-
 exports.generateOtp = async (req, res, next) => {
     const { userId, email } = req.user;
     console.log(req.user);
@@ -178,15 +139,10 @@ exports.generateOtp = async (req, res, next) => {
         otp += Math.floor(Math.random() * 10);
     }
 
-    const updateUserOtpQuery = `UPDATE USER SET otp=?, otp_expiry=? WHERE id=?`;
+    const updateUserOtpQuery = `UPDATE user SET otp=?, otp_expiry=? WHERE id=?`;
 
     try {
-        await new Promise((resolve, reject) => {
-            db.query(updateUserOtpQuery, [otp, otp_expiry_time, userId], (error, result) => {
-                if (error) reject(error);
-                else resolve(result);
-            });
-        })
+        await db.query(updateUserOtpQuery, [otp, otp_expiry_time, userId]);
 
         const transporter = nodemailer.createTransport({
             service: 'gmail',
@@ -218,37 +174,23 @@ exports.generateOtp = async (req, res, next) => {
     } catch (error) {
         next(error)
     }
-
-
 }
 
 exports.validateOtp = async (req, res, next) => {
     const userId = req.user.userId;
     const { otp } = req.body;
 
-    const userOtpQuery = `SELECT otp, otp_expiry FROM User WHERE id=?`;
+    const userOtpQuery = `SELECT otp, otp_expiry FROM user WHERE id=?`;
 
     try {
-        const results = await new Promise((resolve, reject) => {
-            db.query(userOtpQuery, [userId], (error, results) => {
-                if (error) reject(error);
-                else resolve(results)
-            })
-        })
+        const [rows] = await db.query(userOtpQuery, [userId]);
 
-        const registeredOtp = results[0];
+        const registeredOtp = rows[0];
         const now = new Date();
 
         if (otp === registeredOtp.otp && now < new Date(registeredOtp.otp_expiry)) {
-
-            const otpCleanupQuery = `UPDATE User SET otp=Null, otp_expiry=Null Where id=?`;
-
-            await new Promise((resolve, reject) => {
-                db.query(otpCleanupQuery, [userId], (error, results) => {
-                    if (error) reject(error);
-                    else resolve(results)
-                })
-            })
+            const otpCleanupQuery = `UPDATE user SET otp=Null, otp_expiry=Null Where id=?`;
+            await db.query(otpCleanupQuery, [userId]);
 
             return res.status(201).json({
                 Message: "OTP validated successufly!",
@@ -272,21 +214,14 @@ exports.validateOtp = async (req, res, next) => {
     }
 }
 
-
 exports.changePassword = async (req, res, next) => {
     const { userId } = req.user.userId;
     const { newPassword, confirmedNewPassword } = req.body;
 
     try {
         if (newPassword === confirmedNewPassword) {
-            const updateUserPasswordQuery = `UPDATE USER SET password=? WHERE id=?`;
-
-            await new Promise((resolve, reject) => {
-                db.query(updateUserPasswordQuery, [newPassword, userId], (error, results) => {
-                    if (error) reject(error);
-                    else resolve(results);
-                })
-            })
+            const updateUserPasswordQuery = `UPDATE user SET password=? WHERE id=?`;
+            await db.query(updateUserPasswordQuery, [newPassword, userId]);
 
             return res.status(201).json({
                 Message: "Password has been updated!",
@@ -303,27 +238,15 @@ exports.changePassword = async (req, res, next) => {
     }
 }
 
-
 exports.deleteUserAccount = async (req, res, next) => {
     const { userId } = req.user;
 
     try {
-        const deleteUserQuery = `DELETE FROM USER WHERE id=?`;
-        const deleteUserAddressQuery = `DELETE FROM ADDRESS WHERE userId=?`;
+        const deleteUserQuery = `DELETE FROM user WHERE id=?`;
+        const deleteUserAddressQuery = `DELETE FROM address WHERE userId=?`;
 
-        await new Promise((resolve, reject) => {
-            db.query(deleteUserAddressQuery, [userId], (error, results) => {
-                if (error) reject(error);
-                else resolve(results);
-            })
-        })
-
-        await new Promise((resolve, reject) => {
-            db.query(deleteUserQuery, [userId], (error, results) => {
-                if (error) reject(error);
-                else resolve(results);
-            })
-        })
+        await db.query(deleteUserAddressQuery, [userId]);
+        await db.query(deleteUserQuery, [userId]);
 
         return res.status(201).json({
             Message: "User has been deleted!",
@@ -344,33 +267,26 @@ exports.refreshToken = async (req, res, next) => {
             throw error;
         }
 
-        // verify refresh token
         const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
 
-        // check if refresh token exists in database
-        const result = await new Promise((resolve, reject) => {
-            db.query('SELECT * FROM User WHERE id = ? AND refresh_token = ?',
-                [decoded.userId, refreshToken],
-                (error, result) => {
-                    if (error) reject(error);
-                    else resolve(result);
-                });
-        });
+        const [rows] = await db.query(
+            'SELECT * FROM user WHERE id = ? AND refresh_token = ?',
+            [decoded.userId, refreshToken]
+        );
 
-        if (result.length === 0) {
+        if (rows.length === 0) {
             const error = new Error("Invalid refresh token");
             error.statusCode = 401;
             throw error;
         }
 
-        const user = result[0];
+        const user = rows[0];
 
-        // generate new access token
         const newAccessToken = jwt.sign(
             {
                 userId: user.id,
                 email: user.email,
-                exp: Math.floor(Date.now() / 1000) + (60 * 15) // 15 minutes
+                exp: Math.floor(Date.now() / 1000) + (60 * 15)
             },
             process.env.JWT_SECRET
         );

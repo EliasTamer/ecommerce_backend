@@ -4,14 +4,8 @@ exports.getProfile = async (req, res, next) => {
     const { userId } = req.body;
 
     try {
-        const getUserProfileQuery = `SELECT * FROM USER WHERE id=?`;
-
-        const results = await new Promise((resolve, reject) => {
-            db.query(getUserProfileQuery, [userId], (error, result) => {
-                if (error) reject(error);
-                resolve(result);
-            });
-        })
+        const getUserProfileQuery = `SELECT * FROM user WHERE id=?`;
+        const [results] = await db.query(getUserProfileQuery, [userId]);
 
         if (results.length === 1) {
             const userData = results[0];
@@ -46,14 +40,8 @@ exports.editProfile = async (req, res, next) => {
                 fieldsToUpdateArray.push(value)
             });
 
-            const updateUserQuery = `UPDATE USER SET ` + fieldsToUpdateQuery + " WHERE id = ?"
-
-            const result = await new Promise((resolve, reject) => {
-                db.query(updateUserQuery, [...fieldsToUpdateArray, req.user.userId], (error, result) => {
-                    if (error) reject(error);
-                    else resolve(result);
-                });
-            })
+            const updateUserQuery = `UPDATE user SET ` + fieldsToUpdateQuery + " WHERE id = ?";
+            const [result] = await db.query(updateUserQuery, [...fieldsToUpdateArray, req.user.userId]);
 
             return res.status(201).json({
                 data: result,

@@ -5,7 +5,7 @@ function setupMiddleware(path) {
     const storage = multer.diskStorage({
         destination: function (req, file, cb) {
             // specify the directory where you want to save the uploaded files
-            cb(null, path); // create this 'uploads' folder in your project root
+            cb(null, path); // create the path folder in your project root
         },
         filename: function (req, file, cb) {
             // define how the uploaded file should be named

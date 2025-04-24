@@ -50,3 +50,10 @@ app.listen(port, (error) => {
     }
     console.log(`Server is running on port ${port}`);
 });
+
+/* TO DO
+- add pagination and filtering in the products listing api (category_id, price and stock)
+- create github pipelines that deploys the backend to azure app service
+- create a mysql server on azure
+- configure azure app insights to track metrics/events/requests
+*/

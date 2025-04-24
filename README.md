@@ -155,3 +155,28 @@ The application includes Azure Application Insights for monitoring and performan
 - Password hashing using bcrypt
 - CORS configuration
 - SQL injection prevention
+
+
+
+## Docker commands
+
+- <strong> docker-compose up </strong> to start all containers that exist in docker-compose.yml
+- <strong> docker-compose up --build </strong> to re-build all the containers in case changes were made to Dockerfile or docker-compose.yml
+- <strong> docker-compose up --watch</strong> to start all containers in watch mode, all code changes will be synced directly without having to re-build 
+- <strong> docker images </strong> will list all the images available
+
+
+
+## Azure MySQL server connection
+
+- create a flexible MySQL server instance on azure
+- allow access to the database from your IP address in the networking section
+- connect to your database from the cmd using this command:
+``` 
+mysql -h {host} -P 3306 -u {admin-username} -p
+```
+- in case you have a local database that you need to import to azure, you need to dump it first and then import it using the below 2 commands: 
+```
+mysqldump -u {your_local_username} -p {db_name} > {db_name}.sql
+mysql -h {host}-P 3306 -u {admin-username} -p {db_name} < {db_name}.sql
+```

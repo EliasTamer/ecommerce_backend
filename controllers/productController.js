@@ -14,14 +14,8 @@ exports.createProduct = async (req, res, next) => {
         // upload to Azure Storage and get URL
         const imageUrl = await saveToStorageAccount(req.file, 'products');
 
-        const createProductQuery = "INSERT INTO PRODUCT (name, description, price, stock, image, category_id) VALUES(?, ?, ?, ?, ?, ?)";
-
-        const result = await new Promise((resolve, reject) => {
-            db.query(createProductQuery, [name, description, price, stock, imageUrl, categoryId], (error, result) => {
-                if (error) reject(error);
-                else resolve(result);
-            })
-        });
+        const createProductQuery = "INSERT INTO product (name, description, price, stock, image, category_id) VALUES(?, ?, ?, ?, ?, ?)";
+        const [result] = await db.query(createProductQuery, [name, description, price, stock, imageUrl, categoryId]);
 
         return res.status(201).json({
             data: {
@@ -37,16 +31,10 @@ exports.createProduct = async (req, res, next) => {
     }
 }
 
-
 exports.getProducts = async (req, res, next) => {
     try {
-        const getProductsQuery = `SELECT * FROM PRODUCT`;
-        const results = await new Promise((resolve, reject) => {
-            db.query(getProductsQuery, [], (error, results) => {
-                if (error) reject(error);
-                resolve(results)
-            })
-        })
+        const getProductsQuery = `SELECT * FROM product`;
+        const [results] = await db.query(getProductsQuery);
 
         return res.status(201).json({
             data: results,
@@ -58,18 +46,12 @@ exports.getProducts = async (req, res, next) => {
     }
 }
 
-
 exports.getProductDetails = async (req, res, next) => {
     const { productId } = req.body;
 
     try {
-        const getProductDetailsQuery = `SELECT * FROM PRODUCT WHERE id=?`;
-        const results = await new Promise((resolve, reject) => {
-            db.query(getProductDetailsQuery, [productId], (error, results) => {
-                if (error) reject(error);
-                resolve(results);
-            })
-        })
+        const getProductDetailsQuery = `SELECT * FROM product WHERE id=?`;
+        const [results] = await db.query(getProductDetailsQuery, [productId]);
 
         if (results.length === 0) {
             const error = new Error("No product found!");
@@ -86,7 +68,6 @@ exports.getProductDetails = async (req, res, next) => {
     }
 }
 
-
 exports.updateProduct = async (req, res, next) => {
     try {
         const updatedProductDetails = req.body;
@@ -100,14 +81,8 @@ exports.updateProduct = async (req, res, next) => {
                 fieldsToUpdateArray.push(value)
             });
 
-            const updatedProductQuery = `UPDATE PRODUCT SET ` + fieldsToUpdateQuery + " WHERE id = ?";
-
-            const result = await new Promise((resolve, reject) => {
-                db.query(updatedProductQuery, [...fieldsToUpdateArray, updatedProductDetails.id], (error, result) => {
-                    if (error) reject(error);
-                    else resolve(result);
-                });
-            })
+            const updatedProductQuery = `UPDATE product SET ` + fieldsToUpdateQuery + " WHERE id = ?";
+            const [result] = await db.query(updatedProductQuery, [...fieldsToUpdateArray, updatedProductDetails.id]);
 
             return res.status(201).json({
                 data: result,
@@ -126,18 +101,12 @@ exports.updateProduct = async (req, res, next) => {
     }
 }
 
-
 exports.deleteProduct = async (req, res, next) => {
     const { id } = req.body;
 
     try {
-        const deleteProductQuery = `DELETE FROM PRODUCT WHERE id=?`;
-        const results = await new Promise((resolve, reject) => {
-            db.query(deleteProductQuery, [id], (error, results) => {
-                if (error) reject(error);
-                resolve(results);
-            })
-        })
+        const deleteProductQuery = `DELETE FROM product WHERE id=?`;
+        const [results] = await db.query(deleteProductQuery, [id]);
 
         if (results.affectedRows === 0) {
             const error = new Error("Please provide a valid id of the product that you want to delete!");
