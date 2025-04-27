@@ -1,5 +1,6 @@
 const db = require("../utils/databaseConnection");
 const saveToStorageAccount = require("../utils/saveToStorageAccount");
+const { getFromCache, storeInCache } = require('../utils/redisClient');
 
 exports.createProduct = async (req, res, next) => {
     try {
@@ -33,23 +34,51 @@ exports.createProduct = async (req, res, next) => {
 
 exports.getProducts = async (req, res, next) => {
     try {
-        const getProductsQuery = `SELECT * FROM product`;
-        const [results] = await db.query(getProductsQuery);
+        const filters = req.body;
+
+        let getProductsQuery = 'SELECT * FROM product';
+        const queryParams = [];
+
+        if (filters && Object.keys(filters).length > 0) {
+            getProductsQuery += ' WHERE';
+
+            Object.entries(filters).forEach(([key, value], index) => {
+                if (index > 0) {
+                    getProductsQuery += ' AND';
+                }
+
+                getProductsQuery += ` ${key} = ?`;
+                queryParams.push(value);
+            });
+        }
+
+        const [results] = await db.query(getProductsQuery, queryParams);
 
         return res.status(201).json({
             data: results,
             Success: true,
-        })
+        });
     }
     catch (error) {
         next(error);
     }
-}
+};
 
 exports.getProductDetails = async (req, res, next) => {
     const { productId } = req.body;
+    const cacheKey = `product:${productId}`;
+    const cacheExpiration = 3600;
 
     try {
+        const cachedProduct = await getFromCache(cacheKey);
+        if (cachedProduct) {
+            console.log(`Product details found in cache for ID ${productId}`);
+            return res.status(200).json({
+                data: cachedProduct,
+                Success: true,
+            });
+        }
+
         const getProductDetailsQuery = `SELECT * FROM product WHERE id=?`;
         const [results] = await db.query(getProductDetailsQuery, [productId]);
 
@@ -59,14 +88,19 @@ exports.getProductDetails = async (req, res, next) => {
             throw error;
         }
 
-        return res.status(201).json({
-            data: results[0],
-            Success: true
-        })
+        const productData = results[0];
+
+        await storeInCache(cacheKey, productData, cacheExpiration);
+        console.log(`Product details for ID ${productId} stored in cache`);
+
+        return res.status(200).json({
+            data: productData,
+            Success: true,
+        });
     } catch (error) {
         next(error);
     }
-}
+};
 
 exports.updateProduct = async (req, res, next) => {
     try {

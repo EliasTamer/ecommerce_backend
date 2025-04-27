@@ -1,13 +1,41 @@
 require("dotenv").config();
+
+const appInsights = require('applicationinsights');
+require('@azure/opentelemetry-instrumentation-azure-sdk');
+
+const appInsightsConnectionString = process.env.AZURE_APP_INSIGHTS_CONNECTION_STRING || "";
+
+if (!appInsightsConnectionString) {
+    console.error("Azure Application Insights connection string is not set.");
+} else {
+    appInsights.setup(appInsightsConnectionString)
+    .setAutoCollectRequests(true)
+    .setAutoCollectPerformance(true, true)
+    .setAutoCollectExceptions(true)
+    .setAutoCollectDependencies(true)
+    .setAutoCollectConsole(true, false)
+    .setAutoCollectPreAggregatedMetrics(true)
+    .setSendLiveMetrics(true)
+    .setInternalLogging(false, true)
+    .enableWebInstrumentation(false)
+    try {
+        appInsights.start(); 
+    } catch (err) {
+        console.error('Failed to start Application Insights:', err);
+    }
+}
+
+
 const express = require("express");
 const app = express();
+const port = process.env.PORT || 3001;
+
 const authRoutes = require("./routes/authRoutes");
 const productRoutes = require("./routes/productRoutes");
 const userRoutes = require("./routes/userRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 
-const port = process.env.PORT || 3001;
 
 // formatting body requests to json
 app.use(express.json());
@@ -52,8 +80,6 @@ app.listen(port, (error) => {
 });
 
 /* TO DO
-- add pagination and filtering in the products listing api (category_id, price and stock)
 - create github pipelines that deploys the backend to azure app service
-- create a mysql server on azure
-- configure azure app insights to track metrics/events/requests
+- add redis caching to start caching on the server side (redis server to be created on azure)
 */
