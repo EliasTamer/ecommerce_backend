@@ -29,6 +29,9 @@ if (!appInsightsConnectionString) {
 const express = require("express");
 const app = express();
 const port = process.env.PORT || 3001;
+const rateLimitingMiddleware = require("./utils/rateLimitingMiddleware");
+
+app.use(rateLimitingMiddleware());
 
 const authRoutes = require("./routes/authRoutes");
 const productRoutes = require("./routes/productRoutes");

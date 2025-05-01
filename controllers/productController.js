@@ -67,7 +67,7 @@ exports.getProducts = async (req, res, next) => {
 exports.getProductDetails = async (req, res, next) => {
     const { productId } = req.body;
     const cacheKey = `product:${productId}`;
-    const cacheExpiration = 3600;
+    const cacheExpiration = 10;
 
     try {
         const cachedProduct = await getFromCache(cacheKey);
