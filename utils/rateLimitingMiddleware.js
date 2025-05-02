@@ -1,7 +1,7 @@
 function rateLimitingMiddleware(options = {}) {
     const {
         windowMs = 60 * 1000, // default time window: 1 minute in milliseconds
-        max = 2,            // default max requests allowed in the window
+        max = 100,            // default max requests allowed in the window
         message = 'Too many requests, please try again later.', 
         statusCode = 429,
     } = options;

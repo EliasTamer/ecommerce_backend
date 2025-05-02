@@ -9,7 +9,7 @@ const upload = multerMiddleware("uploads/products/");
 
 
 router.post("/createProduct", verifyToken, upload.single("image"), productController.createProduct);
-router.get("/getProducts", productController.getProducts);
+router.get("/getProducts", verifyToken, productController.getProducts);
 router.get("/getProductDetails", verifyToken, productController.getProductDetails);
 router.post("/updateProduct", verifyToken, productController.updateProduct);
 router.post("/deleteProduct", verifyToken, productController.deleteProduct);

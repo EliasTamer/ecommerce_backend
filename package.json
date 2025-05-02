@@ -4,7 +4,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "workers": "node startWorkers.js"
   },
   "author": "",
   "license": "ISC",
@@ -13,16 +14,14 @@
     "@azure/storage-blob": "^12.26.0",
     "applicationinsights": "^3.7.0",
     "bcryptjs": "^2.4.3",
-    "body-parser": "^1.20.3",
+    "bull": "^4.16.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "express-validator": "^7.2.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.11.5",
     "nodemailer": "^6.9.16",
     "nodemon": "^3.1.9",
-    "redis": "^4.7.0",
-    "uuid": "^11.0.3"
+    "redis": "^4.7.0"
   }
 }
